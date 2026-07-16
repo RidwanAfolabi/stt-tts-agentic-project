@@ -5,8 +5,8 @@
 #include <Wire.h>
 
 // --- Network Settings ---
-const char* ssid = "ifixbalikpulau_2.4GHz";
-const char* password = "IFIX@@BP";
+const char* ssid = "fixbalau_2.4GHz";
+const char* password = "FX@BPAU";
 const char* server_ip = "192.168.1.9"; // Target machine running the FastAPI backend
 const uint16_t server_port = 8000;
 
