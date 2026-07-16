@@ -77,7 +77,7 @@ async def voice_agent_endpoint(websocket: WebSocket):
                         await session.send_realtime_input(
                             audio=types.Blob(
                                 data=audio_chunk,
-                                mime_type="audio/pcm;rate=16000"
+                                mime_type="audio/pcm;rate=24000"
                             )
                         )
                 except WebSocketDisconnect:
