@@ -13,7 +13,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 app = FastAPI(title="ESP32 Voice Gateway")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Using the official low-latency live identifier string
+# Use the official real-time model
 MODEL_ID = "gemini-3.1-flash-live-preview" 
 
 # ---------------------------------------------------------
@@ -68,14 +68,14 @@ async def voice_agent_endpoint(websocket: WebSocket):
             print("[SERVER] Connected to Gemini Live API.")
 
             async def stream_mic_to_gemini():
-                """Reads binary audio from ESP32 and pushes to Gemini via polymorphic send"""
+                """Reads binary audio from ESP32 and pushes to Gemini via modern real-time inputs"""
                 try:
                     while True:
                         audio_chunk = await websocket.receive_bytes()
                         
-                        # Use the safe, universally supported polymorphic .send method
-                        await session.send(
-                            input=types.Blob(
+                        # Use the protocol-compliant send_realtime_input specifically targeting 'audio'
+                        await session.send_realtime_input(
+                            audio=types.Blob(
                                 data=audio_chunk,
                                 mime_type="audio/pcm;rate=16000"
                             )
@@ -99,6 +99,7 @@ async def voice_agent_endpoint(websocket: WebSocket):
 
                         # SCENARIO B: Gemini wants to use the external system
                         elif response.tool_call:
+                            function_responses = []
                             for fc in response.tool_call.function_calls:
                                 if fc.name == "consult_external_system":
                                     query = fc.args["user_query"]
@@ -106,24 +107,18 @@ async def voice_agent_endpoint(websocket: WebSocket):
                                     # 1. Execute your custom logic
                                     result_text = await call_external_llm(query)
                                     
-                                    # 2. Send the text result back using the safe polymorphic channel
-                                    print("[SERVER] Sending tool result back to Gemini...")
-                                    await session.send(
-                                        input=types.LiveClientContent(
-                                            turns=[
-                                                types.Content(
-                                                    role="user",
-                                                    parts=[
-                                                        types.Part.from_function_response(
-                                                            name=fc.name,
-                                                            response={"result": result_text}
-                                                        )
-                                                    ]
-                                                )
-                                            ],
-                                            turn_complete=True
+                                    # 2. Package standard FunctionResponse format
+                                    function_responses.append(
+                                        types.FunctionResponse(
+                                            name=fc.name,
+                                            id=fc.id,
+                                            response={"result": result_text}
                                         )
                                     )
+                                    
+                            # 3. Use send_tool_response to feed the result securely back to Gemini
+                            print("[SERVER] Sending tool result back to Gemini...")
+                            await session.send_tool_response(function_responses=function_responses)
 
                 except Exception as e:
                     print(f"[ERROR] Gemini stream: {e}")
